@@ -37,5 +37,12 @@ mode." [Manual]. Set point is the desired water temperature, which is higher whe
 
 To set this bit, I use a [Shelly 1](https://www.shelly.cloud/de/products/shop/1xs1). For test purposes you can use it as a timer, but the benefit for this project is its ability to act as a software-controllable remote switch.
 
+## Dimplex's communication interface
+
+According to the [electrical documentation](https://dimplex.de/sites/default/files/DHW_300plus_Elektrodokumentation.pdf), the Dimplex incorporates an "RS485" interface, for a "Building management system" to be connected via 2-wire "data-cable; shielded". According to the formerly available [dimplex.de wiki (archived)](https://web.archive.org/web/20210513144740/http://www.dimplex.de/wiki/index.php/DHW_Modbus_RTU), the connector is "RJ12" and the protocol is "ModbusRTU". Reading operating states and changing settings shall be possible.
+
+Also I found useful hints in a [forum](https://community.symcon.de/t/modbus-rtu-auf-tcp/122536/44). And while the official wiki disappeared, valuable information was posted there, also linking to another [forum](https://forum.iobroker.net/topic/65100/anleitung-dimplex-w%C3%A4rmepumpe-%C3%BCber-modbus-verbinden). And I got hints from my seller.
+
+
 ## To be continued.
 

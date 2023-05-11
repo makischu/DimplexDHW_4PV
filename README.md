@@ -41,7 +41,25 @@ To set this bit, I use a [Shelly 1](https://www.shelly.cloud/de/products/shop/1x
 
 According to the [electrical documentation](https://dimplex.de/sites/default/files/DHW_300plus_Elektrodokumentation.pdf), the Dimplex incorporates an "RS485" interface, for a "Building management system" to be connected via 2-wire "data-cable; shielded". According to the formerly available [dimplex.de wiki (archived)](https://web.archive.org/web/20210513144740/http://www.dimplex.de/wiki/index.php/DHW_Modbus_RTU), the connector is "RJ12" and the protocol is "ModbusRTU". Reading operating states and changing settings shall be possible.
 
-Also I found useful hints in a [forum](https://community.symcon.de/t/modbus-rtu-auf-tcp/122536/44). And while the official wiki disappeared, valuable information was posted there, also linking to another [forum](https://forum.iobroker.net/topic/65100/anleitung-dimplex-w%C3%A4rmepumpe-%C3%BCber-modbus-verbinden). And I got hints from my seller.
+Also I found useful hints in a [forum](https://community.symcon.de/t/modbus-rtu-auf-tcp/122536/44). And while the official wiki disappeared, valuable information was posted there, also linking to another [forum](https://forum.iobroker.net/topic/65100/anleitung-dimplex-w%C3%A4rmepumpe-%C3%BCber-modbus-verbinden). And I got similar hints from my seller.
+
+## Accessing the heating rod
+
+The Dimplex combines two heating devices: The (efficient) heat pump and the (dumb) flange heater. The heat pump shall continue to work from grid. The heating rod is tapped for an alternate usage. Electrically this is just a resistor. It doesn't care about the waveform, so we can drive it with any DC voltage. So we can omit an inverter and drive it directly by photovoltaics, right?
+
+Yes, but. This will work, but it will not be safe. There is a Safety Temperature Limiter (STL), which is designed to break the line if the heater becomes dangerously hot, due to whatever malfunction. But AC breakers in general cannot reliably break DC current. In this case, a breaking attempt may result in never-ending arcing, thus making things even worse. 
+
+If I was an STL designer for DC/PV, I would cause it to [additionally] short the poles [at the input] instead of [just] open them. This avoids further energy flow into the heater *and* avoids arcing. Current is inherently limited by PV anyhow. P=U*I. Breaking sets I=0 (but may fail), shorting sets U=0 (and thus helps setting I=0). Result: P=0. I don't know if that is compliant to established STL/heating device standards, and I don't really care, because:
+
+As I am *not* an STL designer. And I don't want to mess with existing safety measures. I had to find a different solution. I am using a kind of interlock circuit to *enable* (not disable) the DC/PV source. Which of course must be able to break PV current when the enable signal disappears. Luckily the Dimplex engineers spent a 3 pole STL of which they only use 2 poles. We can use the spare pole as a signal line (not power), to let some suitable switch do the work. Again, I don't know if that is compliant to established STL/heating device standards, but I consider it safe. [Others](http://waterheatertimer.org/Convert-AC-water-heater-to-DC-water-heater.html#best-design) also claim, that this principle "does NOT by-pass water heater safety features".
+
+![Overview](./img/dimplexwiring.jpg)
+
+I didn't want to completely forgo the "boost" function (where the Dimplex uses heat pump and flange heater at the same time to heat as fast as it can). Although I do not plan to use that mode much, I want to be able to use it on demand, without rewiring. So I made the flange heater source switchable. Note that here again, we need to make sure the switch survives breaking DC current. In addition to choosing a potent switch and combining multiple poles according to its datasheet, I spent 1 pole to include it to the interlock circuit. So even in case the (manually operated) switch fails, another (electrically controlled) switch will take over. Apart from the fact that if sun burns, there will not be a need for switching to AC anyhow. So again, I consider this safe enough for my application.
+
+The DC PV Controller is [direct-pv2heat-meter](https://github.com/makischu/direct-pv2heat-meter).
+
+In my case the Enable signal is implemented as a "logical" signal only, transferred wirelessly. This can cause some delay and requires a good design, always falling to the safe state in case of any errors (e.g. broken wifi). Of course, from a safety perspective, I recommend using a dedicated cable. 
 
 
 ## To be continued.

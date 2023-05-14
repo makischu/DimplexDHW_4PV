@@ -61,6 +61,8 @@ The DC PV Controller is [direct-pv2heat-meter](https://github.com/makischu/direc
 
 In my case the Enable signal is implemented as a "logical" signal only, transferred wirelessly. This can cause some delay and requires a good design, always falling to the safe state in case of any errors (e.g. broken wifi). Of course, from a safety perspective, I recommend using a dedicated cable. 
 
+Note that eventually there is a normal thermostat (temperature regulator/TR) in series to the STL, limiting our maximum heater temperature far below becoming dangerous. This is indicated in the [electric diagram](https://dimplex.de/sites/default/files/DHW_300plus_Elektrodokumentation.pdf), [wikipedia](https://de.wikipedia.org/wiki/Sicherheitstemperaturbegrenzer) and this [forum post](https://www.haustechnikdialog.de/Forum/p/2597692), but the information is not consistent. While I can enable the flange heater and set the desired temperature up to 85&deg;C at the user interface (at least with Soft.Vers. 1.6 1), the electrical documentation (delivered with the same device in 2023 on paper) still indicates a hardwired thermostat set to 65&deg;C.
+
 
 ## To be continued.
 

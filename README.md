@@ -35,13 +35,26 @@ Collected data is formatted as [JSON](https://en.wikipedia.org/wiki/JSON) and pu
 "For the photovoltaic function, the terminal X8 must be fed with 230 V 50 Hz. [...] If the photovoltaic input is active, the heat pump controls to the setpoint for the PV
 mode." [Manual]. Set point is the desired water temperature, which is higher when the pv "bit" is active.
 
-To set this bit, I use a [Shelly 1](https://www.shelly.cloud/de/products/shop/1xs1). For test purposes you can use it as a timer, but the benefit for this project is its ability to act as a software-controllable remote switch.
+To set this bit, I use a [Shelly 1](https://www.shelly.cloud/de/products/shop/1xs1). For test purposes you can use it as a timer, but the benefit for this project is its ability to act as a software-controllable remote switch. And it offers an input, which we will use later, too (see below).
 
 ## Dimplex's communication interface
 
 According to the [electrical documentation](https://dimplex.de/sites/default/files/DHW_300plus_Elektrodokumentation.pdf), the Dimplex incorporates an "RS485" interface, for a "Building management system" to be connected via 2-wire "data-cable; shielded". According to the formerly available [dimplex.de wiki (archived)](https://web.archive.org/web/20210513144740/http://www.dimplex.de/wiki/index.php/DHW_Modbus_RTU), the connector is "RJ12" and the protocol is "ModbusRTU". Reading operating states and changing settings shall be possible.
 
 Also I found useful hints in a [forum](https://community.symcon.de/t/modbus-rtu-auf-tcp/122536/44). And while the official wiki disappeared, valuable information was posted there, also linking to another [forum](https://forum.iobroker.net/topic/65100/anleitung-dimplex-w%C3%A4rmepumpe-%C3%BCber-modbus-verbinden). And I got similar hints from my seller.
+
+Once modbus is connected, we can poll it. For my purpose I limit myself to regularly reading data; I do not need to make changes via modbus. Though it might be possible to eliminate the Shelly that way, I have not tried (yet). [Here](modbus/dhwmodbus2mqtt.py) is the script, which also polls the energy meter on the same bus.
+
+The most relevant Dimplex data is water temperature. To be more accurate, a top and a bottom water temperature are distinguished. Furthermore an estimated(!) power consumption is available. 
+
+![Temperature and Power Chart](./img/tempvspower2.png)
+
+When plotting these values, and compared to measured(!) power consumption, I learned a lot about the device:
+- in general, water is really warmer on top than at the bottom (a phantastic effect, as hot water remains available while cold water remains at the bottom)
+- the heat pump primarly heats water at the bottom (where it is colder; also good for efficiency)
+- once the heated water at the bottom reaches the top temperature, it raises to the top. from that moment, temperatures increase similarly
+- the power consumption is state- and temperature-dependent. The hotter, the more power is drawn from the line.
+- the integrated power estimation fits external measurement well! Dimplex modelled the temperature-dependency astonishingly well. (ok, obviously it is a minor bug that they use the top temperature instead of bottom temperature.) In idle state the estimation is 0, and in fact my measurement device also reads 0.0 Watt (without the Shelly)! So in general the external power measurement is dispensable (an energy estimate could be gained by integration).
 
 ## Accessing the heating rod
 
@@ -59,10 +72,26 @@ I didn't want to completely forgo the "boost" function (where the Dimplex uses h
 
 The DC PV Controller is [direct-pv2heat-meter](https://github.com/makischu/direct-pv2heat-meter).
 
-In my case the Enable signal is implemented as a "logical" signal only, transferred wirelessly. This can cause some delay and requires a good design, always falling to the safe state in case of any errors (e.g. broken wifi). Of course, from a safety perspective, I recommend using a dedicated cable. 
+In my case the Enable signal is implemented as a "logical" signal only, transferred wirelessly. This can cause some delay and requires a good design, always falling to the safe state in case of any errors (e.g. broken wifi). Of course, from a safety perspective, I recommend using a dedicated cable. But my implementation is [this](logic/DCPVEnable.py). Note that there is a fast path: The shelly notifies a lacking OK signal, which is immediately propagated as OFF command. So the expected mean reaction time is far below 1s.
 
 Note that eventually there is a normal thermostat (temperature regulator/TR) in series to the STL, limiting our maximum heater temperature far below becoming dangerous. This is indicated in the [electric diagram](https://dimplex.de/sites/default/files/DHW_300plus_Elektrodokumentation.pdf), [wikipedia](https://de.wikipedia.org/wiki/Sicherheitstemperaturbegrenzer) and this [forum post](https://www.haustechnikdialog.de/Forum/p/2597692), but the information is not consistent. While I can enable the flange heater and set the desired temperature up to 85&deg;C at the user interface (at least with Soft.Vers. 1.6 1), the electrical documentation (delivered with the same device in 2023 on paper) still indicates a hardwired thermostat set to 65&deg;C.
 
+## Running on DC
+
+For the following chart, heating was performed by the proposed DC circuit.
+
+![Temperature and Power Chart](./img/tempvspower3.png)
+
+There are several things I learned from the first few days' data:
+- Heating with the electric heater works. Also with DC. Also with the proposed logic. The temperature is ceiled. 
+- But not all the water is heated. While the top temperature rises, the bottom temperature is nearly constant.
+- The heat pump does not turn on to fix this, so obviously it uses the top temperature as regulator input.
+
+What is going wrong? I ignored at least one physical effect. Heated water raises towards the top. And water in the tank builds layers, it does not mix much. And water flows bottom-up when tapped. Shortly: Hot water does not move downwards. This is why the electric heater can only heat water above its position. As it is mounted approximately centered, **only half of the tank can be heated** by it. This also fits the energy approximation: ~2kWh were required to heat top water by 13&deg;C, which translates to ~130 affected liters of water. The tank has 280l, twice as much.
+
+During normal operation, this is not an issue, becaues the electric heater is designed as an *additional* heater and not used alone. 
+
+How to overcome this limitation? I could force the hot water to the bottom by a circulation pump. But I wanted to avoid extra plumber work... to be solved.
 
 ## To be continued.
 

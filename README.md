@@ -54,7 +54,7 @@ When plotting these values, and compared to measured(!) power consumption, I lea
 - the heat pump primarly heats water at the bottom (where it is colder; also good for efficiency)
 - once the heated water at the bottom reaches the top temperature, it raises to the top. from that moment, temperatures increase similarly
 - the power consumption is state- and temperature-dependent. The hotter, the more power is drawn from the line.
-- the integrated power estimation fits external measurement well! Dimplex modelled the temperature-dependency astonishingly well. (ok, obviously it is a minor bug that they use the top temperature instead of bottom temperature.) In idle state the estimation is 0, and in fact my measurement device also reads 0.0 Watt (without the Shelly)! So in general the external power measurement is dispensable (an energy estimate could be gained by integration).
+- the integrated power estimation fits external measurement well! Dimplex modelled the temperature-dependency astonishingly well. (ok, obviously it is a minor bug that they use the top temperature instead of bottom temperature.) In idle state the estimation is 0, and my measurement device also reads 0 Watt (read: something below its resolution). So in general the external power measurement is dispensable (an energy estimate could be gained by integration).
 
 ## Accessing the heating rod
 
@@ -87,11 +87,28 @@ There are several things I learned from the first few days' data:
 - But not all the water is heated. While the top temperature rises, the bottom temperature is nearly constant.
 - The heat pump does not turn on to fix this, so obviously it uses the top temperature as regulator input.
 
-What is going wrong? I ignored at least one physical effect. Heated water raises towards the top. And water in the tank builds layers, it does not mix much. And water flows bottom-up when tapped. Shortly: Hot water does not move downwards. This is why the electric heater can only heat water above its position. As it is mounted approximately centered, **only half of the tank can be heated** by it. This also fits the energy approximation: ~2kWh were required to heat top water by 13&deg;C, which translates to ~130 affected liters of water. The tank has 280l, twice as much.
+What is going wrong? I ignored at least one physical effect. Heated water raises towards the top. And water in the tank builds layers, it does not mix much. And water flows bottom-up when tapped. Shortly: Hot water does not move downwards. This is why the electric heater can only heat water above its position. As it is mounted approximately centered, **only half of the tank can be heated** by it. This also fits the energy approximation: ~2kWh were required to heat top water by 13&deg;C, which translates to ~130 affected liters of water. The tank has 280l, roughly twice as much.
+
+Verifcation the next day:
+
+![Temperature and Power Chart](./img/tempvspower4.png)
+
+- 2.0kWh DC for a $\Delta \text{T}$ of 57-41=16&deg;C [translates](https://www.endenergie.de/) to 110l water.
+- 1.58kWh AC for a $\Delta \text{T}$ of 57-26=31&deg;C and COP 3.3 translates to 5.22kWh heat or 150l water.
+- 110l+150l=260l. The tank has 280l, which I think is a match within our uncertainties. 
+- 110 of 280 is only 40%. Even *less* than half of the tank (which was the first rough approximation above) can be heated by the electric heater.
 
 During normal operation, this is not an issue, becaues the electric heater is designed as an *additional* heater and not used alone. 
 
 How to overcome this limitation? I could force the hot water to the bottom by a circulation pump. But I wanted to avoid extra plumber work... to be solved.
+
+## Standby loss
+
+![Temperature and Power Chart](./img/tempvspower5.png)
+
+During absence (no water consumption, DC disabled) I measured 0.94kWh (AC power consumption) to reestablish the desired 60&deg;C (which fell to 55&deg;C top/53&deg;C bottom after 1 day, which equivalents a thermal energy loss of ~2kWh/day). Datasheet suggests 29W (mean?) standby ~~loss~~ consumption, which would equivalent 0.7kWh/day (but I am not sure if this is meant, and the value seems to refer to 55&deg;C instead of 60&deg;C). My interpretation is that the values match (at least if I consider that my pipes were not isolated during the measurements). I *could* and should have known that from the datasheet. 
+
+Almost 1kWh solely for *keeping* the temperature is not negligable, if you compare it to 4.25kWh (datasheet value) for *heating* from 10 to 55&deg;C. And this is just for the tank, without a circulation line or the like. So I think the effect is worth mentioning. I have not expected it to be that significant (the tank comes well isolated and feels cold at the outside).
 
 ## To be continued.
 

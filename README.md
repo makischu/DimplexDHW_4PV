@@ -110,5 +110,37 @@ During absence (no water consumption, DC disabled) I measured 0.94kWh (AC power 
 
 Almost 1kWh solely for *keeping* the temperature is not negligable, if you compare it to 4.25kWh (datasheet value) for *heating* from 10 to 55&deg;C. And this is just for the tank, without a circulation line or the like. So I think the effect is worth mentioning. I have not expected it to be that significant (the tank comes well isolated and feels cold at the outside).
 
-## To be continued.
+## Fixing physics
 
+As stated above, only half of the tank could be heated first, as illustrated on the left. As I cannot change the position of the electric heater, I need to convince the hot water to dive below the electric heater. As this is against the nature of hot water, I force it via ciculation pump. Therefore we can use the circulation pipe connector, which is luckily mounted slightly above the electric heater. Thus we can pull hot water and push it to the cold bottom, while the hottest water on top can stay at its place, ready for tapping.
+
+![Illustration without and with circulation pump](./img/dimplexcirc.jpg)
+
+Of course the pump is only enabled when water is already hot at the top. This way the above illustration can serve also as a state chart. First we can heat the top half, and if there is enough sun, we can continue with the bottom half.
+
+The pump is a [Vortex BWO 155](https://www.deutsche-vortex.com/pumps/continuous-operation-module) which is electrically controlled by another Shelly1 and logically by another [script](logic/CircEnable.py). 
+
+Here is an examplary day, where 4.78 kWh could be harvested:
+
+![Temperature and Power and CircPump Chart](./img/tempvspower6.png)
+
+When enabling the pump for the first time of the day, the measured bottom temperature first drops significanlty. My interpretation is that water layers are now mixed and a mean temperature settles. Even the top temperature sometimes drops slightly. Probably the pump is too strong, and mixes more water than necessary. But with "smart" enabling/disabling, the top temperature is kept almost constant, while the bottom temperature continously rises. This was not possible before. We can now heat the whole tank with DC electric heater. Q.e.d.
+
+## Plumber work
+
+Although I tried to avoid, I needed to do some pumber work to complete the project.
+
+While in general I am happy with the Dimplex, there is one thing I want to note. The water pipe connectors may be prone to corrosion. The manual claims that 
+*"Domestic hot water, cold water and circulation connections:
+These pipe nipples contain plastic inserts, the purpose of
+which is to protect against corrosion (in particular to the pipe
+nipple flange surfaces). These plastic inserts remain in their
+positions after installation."*
+
+In my case, for whatever reason, at least one of the plastic inserts must have rotated during water pipe assembly or disassembly, thus destroying the enamel, thus promoting corrosion instead of preventing. When asked, Dimplex responded fast and confirms that it should not look like this, but refuses any reliability in advance. Judge for yourself. Let's hope the best. Be careful.
+
+![Dimplex Circulation Pipe Connector Corrosion](./img/dimplexcirccorr.jpg)
+
+## Yearly harvest report
+
+What is still missing (and only makes sense to publish at least 1 year later): A report on how much energy was taken from which source, e.g. allowing to judge on the rate of self-sufficiency. To be continued (not before july'24).

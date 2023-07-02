@@ -54,19 +54,25 @@ reqSession = requests.session()
 shellyIP = "192.168.2.75"           # for interlock input. Shelly button action should be configured to call http://192.168.2.xx:8300/dhw/ok/0 when interlock goes low.
 mqttIP   = "192.168.2.43"
 
+topicdhw = "dev/dhw/telemetry"
+topicsyr = "dev/syr/telemetry"
+    
 interlockOK    = False
 T_water_C = 99
 T_water_age = 99
+P_water_bar = 0.0
+P_water_age = 99
 offTriggerCount = 0
 
 
 #THE logic
 def evalEnable():
     global interlockOK
-    global T_water_C
-    global T_water_age
-    DC_PV_Enable = interlockOK and T_water_C < 60 and T_water_age < 65
+    global T_water_C, P_water_bar
+    global T_water_age, P_water_age
+    DC_PV_Enable = interlockOK and T_water_C < 60 and T_water_age < 65 and P_water_bar > 2.0 and P_water_age < 65
     T_water_age = T_water_age + 1
+    P_water_age = P_water_age + 1
     return DC_PV_Enable
 
 
@@ -195,25 +201,51 @@ def on_water_temperature(T_water):
     global T_water_age   
     T_water_C = T_water
     T_water_age = 0
+
+def on_water_pressure(P_water):
+    global P_water_bar     
+    global P_water_age   
+    P_water_bar = P_water
+    P_water_age = 0
     
 #MQTT-Callback.
 def on_message(client, userdata, message):
-    messagestr = str(message.payload.decode())
-    data = json.loads(messagestr)
-    T_key1 = "T_water_top[C]"
-    T_key2 = "T_water_bot[C]"
-    Tmax = 99
-    if T_key1 in data and T_key2:
-        T1 = data[T_key1]
-        T2 = data[T_key2]
-        try:
-            T1=int(T1)
-            T2=int(T2)
-            Tmax = max([T1,T2])
-        except:
-            pass
-    on_water_temperature(Tmax)
-    
+    global topicdhw, topicsyr
+    if message.topic == topicdhw:
+        messagestr = str(message.payload.decode())
+        # ... "T_water_top[C]": "55", "T_water_bot[C]": "48", ...
+        data = json.loads(messagestr)
+        T_key1 = "T_water_top[C]"
+        T_key2 = "T_water_bot[C]"
+        Tmax = 99
+        if T_key1 in data and T_key2 in data:
+            T1 = data[T_key1]
+            T2 = data[T_key2]
+            try:
+                T1=int(T1)
+                T2=int(T2)
+                Tmax = max([T1,T2])
+            except:
+                pass
+        on_water_temperature(Tmax)
+    elif message.topic == topicsyr:
+        messagestr = str(message.payload.decode())
+        #print(messagestr) { ... , "ValveStatus":"20" ,  ...  "Pressure[bar]":"4.7" }
+        data = json.loads(messagestr)
+        key_s = "ValveStatus"
+        key_p = "Pressure[bar]"
+        s_status = "xx"
+        pressure = 0.0
+        if key_s in data and key_p in data: #value status is not delivered every second, pressure is. 
+            s_status   = data[key_s]
+            s_pressure = data[key_p]
+            try:
+                pressure=float(s_pressure)
+            except:
+                pass
+            if s_status != "20": #pressure is measured on value input side, so only valid on output side if value is open.
+                pressure = 0.0
+            on_water_pressure(pressure)
     
     
 
@@ -297,14 +329,14 @@ def stopHttp():
     
     
     
-    
 def startMqtt():
-    global clientStrom
+    global clientStrom, topicdhw, topicsyr
     logging.info('Starting mqtt...')
     clientStrom.on_message = on_message;
     clientStrom.connect(mqttIP, 1883, 60)
     clientStrom.loop_start()
-    clientStrom.subscribe("dev/dhw/telemetry")
+    clientStrom.subscribe(topicdhw)
+    clientStrom.subscribe(topicsyr)
     
 def stopMqtt():
     global clientStrom
@@ -329,7 +361,7 @@ if __name__ == '__main__':
         getShellyInput()
         DC_PV_Enable = evalEnable()
         triggerEnable(DC_PV_Enable)
-        status = {"interlockOK":interlockOK, "T_water_C":T_water_C, "T_water_age":T_water_age, "offTriggerCount":offTriggerCount}
+        status = {"interlockOK":interlockOK, "T_water_C":T_water_C, "T_water_age":T_water_age, "offTriggerCount":offTriggerCount, "P_water_bar":P_water_bar, "P_water_age":P_water_age}
         clientStrom.publish("dev/dhwsrv/telemetry", json.dumps(status))
 
     stopHttp()
